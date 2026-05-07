@@ -12,34 +12,49 @@ aquí es más simple y robusta: **el cliente SSH también vive en el contenedor*
 ## Uso rápido
 
 ```bash
-cd vpn-l2tp
 cp .env.example .env
-nano .env                # rellena VPN_*, SSH_*
+# edita .env con tus credenciales (ver sección Configuración)
 
-chmod +x connect.sh entrypoint.sh ssh-target
-
-./connect.sh             # construye, levanta VPN y te mete a un bash
-# dentro del contenedor:
-ssh-target               # SSH al destino del .env
-
-# para apagar todo:
-./connect.sh down
+docker compose build     # solo la primera vez o al cambiar configs
+docker compose up        # levanta la VPN
 ```
 
-Si prefieres saltarte el bash y abrir SSH directo:
+Cuando veas esto, la VPN está activa:
 
-```bash
-./connect.sh ssh
+```
+====================================================
+ VPN conectada ✓
+   IP local:  192.168.x.x
+ Servidor:   xxx.xxx.xxx.xxx
+----------------------------------------------------
+ Para hacer SSH a tu destino:    ssh-target
+====================================================
 ```
 
-## Comandos manuales (sin connect.sh)
+Desde otra terminal, con la VPN corriendo:
 
 ```bash
-docker compose up -d --build
-docker compose logs -f vpn         # ver el log de conexión
-docker compose exec vpn bash       # entrar al contenedor
-docker compose exec vpn ssh-target # SSH directo
-docker compose down                # apagar
+docker exec -it l2tp-vpn ssh-target          # SSH interactivo
+docker exec -it l2tp-vpn ssh-target "comando" # ejecutar un comando remoto
+```
+
+Para apagar:
+
+```bash
+docker compose down
+```
+
+## Configuración (.env)
+
+```env
+VPN_SERVER=vpn.ejemplo.com   # IP o dominio del servidor L2TP
+VPN_USER=tu_usuario
+VPN_PASS=tu_contraseña       # si tiene $ escríbelo como $$  (ej: pa$$word → pa$word)
+
+SSH_HOST=192.168.10.x        # IP interna accesible desde la VPN
+SSH_PORT=22
+SSH_USER=tu_usuario_ssh
+SSH_PASS=tu_contraseña_ssh   # deja vacío si usas llave SSH
 ```
 
 ## Usar tus llaves SSH del Mac

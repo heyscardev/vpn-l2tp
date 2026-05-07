@@ -28,17 +28,20 @@ modprobe ppp_generic 2>/dev/null || true
 
 mkdir -p /var/run/xl2tpd
 
+DEFAULT_GW=$(ip route show default | awk 'NR==1 {print $3}')
+ip route add "${VPN_SERVER}/32" via "${DEFAULT_GW}" dev eth0 2>/dev/null || true
+
 echo "==> Iniciando xl2tpd..."
 xl2tpd -D -c /etc/xl2tpd/xl2tpd.conf -s /etc/ppp/chap-secrets &
 XL2TPD_PID=$!
 
 # Espera breve para que xl2tpd cree el socket de control.
 for i in 1 2 3 4 5; do
-    [ -S /var/run/xl2tpd/l2tp-control ] && break
+    [ -e /var/run/xl2tpd/l2tp-control ] && break
     sleep 1
 done
 
-if [ ! -S /var/run/xl2tpd/l2tp-control ]; then
+if [ ! -e /var/run/xl2tpd/l2tp-control ]; then
     echo "ERROR: xl2tpd no creó el socket de control. Revisa los logs arriba."
     exit 1
 fi

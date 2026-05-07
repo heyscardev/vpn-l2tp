@@ -12,3 +12,4 @@ replacedefaultroute
 usepeerdns
 connect-delay 5000
 name ${VPN_USER}
+logfile /tmp/pppd.log
