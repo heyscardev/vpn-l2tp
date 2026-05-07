@@ -1,0 +1,15 @@
+#!/bin/bash
+# Atajo: hace SSH al destino definido en el .env, a través del túnel ya activo.
+set -e
+
+: "${SSH_HOST:?Falta SSH_HOST en .env}"
+: "${SSH_USER:?Falta SSH_USER en .env}"
+SSH_PORT="${SSH_PORT:-22}"
+
+OPTS=(-o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 -p "$SSH_PORT")
+
+if [ -n "$SSH_PASS" ]; then
+    exec sshpass -p "$SSH_PASS" ssh "${OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "$@"
+else
+    exec ssh "${OPTS[@]}" "${SSH_USER}@${SSH_HOST}" "$@"
+fi

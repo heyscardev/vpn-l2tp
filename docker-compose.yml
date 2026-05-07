@@ -1,0 +1,17 @@
+services:
+  vpn:
+    build: .
+    container_name: l2tp-vpn
+    hostname: l2tp-vpn
+    privileged: true        # xl2tpd necesita CAP_NET_ADMIN + acceso a /dev/ppp
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    env_file: .env
+    stdin_open: true
+    tty: true
+    restart: "no"
+    # Si quieres conservar tus llaves SSH del Mac dentro del contenedor,
+    # descomenta la línea de abajo (solo lectura).
+    # volumes:
+    #   - ~/.ssh:/root/.ssh:ro

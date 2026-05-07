@@ -1,0 +1,17 @@
+[global]
+port = 1701
+access control = no
+
+[lac myvpn]
+lns = ${VPN_SERVER}
+ppp debug = yes
+pppoptfile = /etc/ppp/options.l2tpd.client
+length bit = yes
+require chap = yes
+refuse pap = yes
+require authentication = yes
+name = ${VPN_USER}
+autodial = yes
+redial = yes
+redial timeout = 10
+max redials = 5
