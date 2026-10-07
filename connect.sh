@@ -4,6 +4,7 @@
 #   ./connect.sh           -> entra a un bash dentro del contenedor
 #   ./connect.sh ssh       -> conecta y abre SSH al destino del .env
 #   ./connect.sh db        -> conecta y abre el gestor de BD en el navegador
+#   ./connect.sh backup    -> conecta y descarga un backup de la BD en ./backups
 #   ./connect.sh down      -> apaga el contenedor
 set -e
 
@@ -50,6 +51,13 @@ if [ "$1" = "db" ]; then
         sleep 2
     done
     open http://localhost:8978
+elif [ "$1" = "backup" ]; then
+    # Espera a que db-forward tenga el túnel listo.
+    for i in $(seq 1 30); do
+        docker compose exec -T vpn bash -c "</dev/tcp/127.0.0.1/\${DB_LOCAL_PORT:-15432}" 2>/dev/null && break
+        sleep 1
+    done
+    docker compose exec vpn db-backup "${@:2}"
 elif [ "$1" = "ssh" ]; then
     docker compose exec vpn ssh-target
 else

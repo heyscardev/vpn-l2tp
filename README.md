@@ -102,6 +102,29 @@ CB_ADMIN_PASSWORD=Cambiame123   # mín. 8, mayúsculas/minúsculas y 1 número
 El túnel se reconecta solo si se cae. Las conexiones creadas a mano en la UI
 se pierden al reiniciar: gestiona la conexión desde `.env`.
 
+### Descargar un backup de la BD
+
+CloudBeaver (versión Community) no hace backups completos; solo exporta
+tablas o resultados de consultas (clic derecho → **Export Data** → CSV, SQL,
+JSON o XLSX). Para un backup completo usa `pg_dump` desde el contenedor:
+
+```bash
+./connect.sh backup                   # backup completo en ./backups/
+./connect.sh backup --schema-only     # solo estructura
+./connect.sh backup -t orders         # solo una tabla
+```
+
+Genera `backups/<DB_NAME>_<fecha>.dump` (formato custom, comprimido). Para
+restaurarlo en una BD local:
+
+```bash
+pg_restore --no-owner -d postgres://usuario@localhost:5432/mi_base backups/arpec_XXXX.dump
+```
+
+El cliente es PostgreSQL 17 (`PG_CLIENT_VERSION` en el `Dockerfile`); debe
+ser igual o más nuevo que la versión del servidor. Solo funciona con
+`DB_TYPE=postgres`.
+
 ### Usar un cliente de escritorio (opcional)
 
 La BD también queda en `127.0.0.1:DB_LOCAL_PORT` del Mac, así que puedes

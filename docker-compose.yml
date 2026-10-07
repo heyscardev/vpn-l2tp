@@ -16,10 +16,10 @@ services:
     ports:
       - "127.0.0.1:${DB_LOCAL_PORT:-15432}:${DB_LOCAL_PORT:-15432}"   # BD (db-forward)
       - "127.0.0.1:8978:8978"                                         # CloudBeaver
-    # Si quieres conservar tus llaves SSH del Mac dentro del contenedor,
-    # descomenta la línea de abajo (solo lectura).
-    # volumes:
-    #   - ~/.ssh:/root/.ssh:ro
+    volumes:
+      - ./backups:/backups            # backups de db-backup
+      # Si quieres usar tus llaves SSH del Mac dentro del contenedor (solo lectura):
+      # - ~/.ssh:/root/.ssh:ro
 
   # Gestor de BD web (CloudBeaver) en http://localhost:8978.
   # Comparte la red del contenedor vpn, así su tráfico sale por la VPN.

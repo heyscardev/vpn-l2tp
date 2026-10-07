@@ -1,0 +1,25 @@
+#!/bin/bash
+# Backup de la BD con pg_dump a través del túnel de db-forward.
+# Deja el archivo en /backups (./backups en el Mac), formato custom de pg_dump
+# (comprimido; se restaura con pg_restore). Argumentos extra van a pg_dump,
+# p. ej.:  db-backup --schema-only    db-backup -t orders
+set -eo pipefail
+
+if [ "${DB_TYPE:-postgres}" != "postgres" ]; then
+    echo "db-backup solo soporta DB_TYPE=postgres (actual: ${DB_TYPE})"
+    exit 1
+fi
+: "${DB_NAME:?Falta DB_NAME en .env}"
+: "${DB_USER:?Falta DB_USER en .env}"
+
+mkdir -p /backups
+FILE="/backups/${DB_NAME}_$(date +%Y%m%d-%H%M%S).dump"
+
+echo "==> Backup de '${DB_NAME}' en curso..."
+# Se escribe a .partial y se renombra al final: si falla no queda un backup a medias.
+PGPASSWORD="$DB_PASS" pg_dump \
+    -h 127.0.0.1 -p "${DB_LOCAL_PORT:-15432}" -U "$DB_USER" -d "$DB_NAME" \
+    -Fc --no-owner --no-privileges -f "${FILE}.partial" "$@"
+mv "${FILE}.partial" "$FILE"
+
+echo "==> Listo: backups/$(basename "$FILE") ($(du -h "$FILE" | cut -f1))"
