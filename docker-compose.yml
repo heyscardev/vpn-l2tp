@@ -11,7 +11,44 @@ services:
     stdin_open: true
     tty: true
     restart: "no"
+    # Solo en 127.0.0.1: la BD de prod no debe quedar expuesta a tu red local.
+    # Los puertos de dbgui se publican aquí porque comparte la red de este contenedor.
+    ports:
+      - "127.0.0.1:${DB_LOCAL_PORT:-15432}:${DB_LOCAL_PORT:-15432}"   # BD (db-forward)
+      - "127.0.0.1:8978:8978"                                         # CloudBeaver
     # Si quieres conservar tus llaves SSH del Mac dentro del contenedor,
     # descomenta la línea de abajo (solo lectura).
     # volumes:
     #   - ~/.ssh:/root/.ssh:ro
+
+  # Gestor de BD web (CloudBeaver) en http://localhost:8978.
+  # Comparte la red del contenedor vpn, así su tráfico sale por la VPN.
+  dbgui:
+    image: dbeaver/cloudbeaver:latest
+    container_name: l2tp-dbgui
+    network_mode: "service:vpn"
+    depends_on:
+      vpn:
+        condition: service_started
+        restart: true       # si vpn se reinicia, dbgui también (pierde la red si no)
+    restart: "no"
+    entrypoint: ["bash", "/cloudbeaver-init.sh"]
+    environment:
+      CB_SERVER_NAME: VPN DB
+      CB_ADMIN_NAME: ${CB_ADMIN_NAME:-qa}
+      CB_ADMIN_PASSWORD: ${CB_ADMIN_PASSWORD:?Falta CB_ADMIN_PASSWORD en .env}
+      CLOUDBEAVER_APP_ANONYMOUS_ACCESS_ENABLED: "false"
+      DB_HOST: ${DB_HOST:-}
+      DB_LOCAL_PORT: ${DB_LOCAL_PORT:-15432}
+      DB_TYPE: ${DB_TYPE:-postgres}
+      DB_NAME: ${DB_NAME:-}
+      DB_USER: ${DB_USER:-}
+      DB_PASS: ${DB_PASS:-}
+      DB_READ_ONLY: ${DB_READ_ONLY:-1}
+      DB_CONNECTION_NAME: ${DB_CONNECTION_NAME:-Producción}
+    volumes:
+      - ./cloudbeaver/init.sh:/cloudbeaver-init.sh:ro
+      - cloudbeaver-data:/opt/cloudbeaver/workspace
+
+volumes:
+  cloudbeaver-data:

@@ -63,6 +63,50 @@ En `docker-compose.yml`, descomenta el bloque `volumes:` para montar
 `~/.ssh` del host en el contenedor (solo lectura). Deja `SSH_PASS` vacío
 en `.env` y tu llave se usará automáticamente.
 
+## Gestor de base de datos (interfaz gráfica)
+
+La VPN solo existe dentro del contenedor, así que el gestor también corre en
+Docker: **CloudBeaver** (equivalente web de DBeaver) en el servicio `dbgui`,
+que comparte la red del contenedor `vpn`. No hay que instalar nada en el Mac.
+
+```bash
+./connect.sh db     # levanta VPN + gestor y abre http://localhost:8978
+```
+
+Entra con `CB_ADMIN_NAME` / `CB_ADMIN_PASSWORD` del `.env`. La conexión a la
+BD ya aparece creada (se genera desde el `.env` en cada arranque), de solo
+lectura por defecto (`DB_READ_ONLY=1`) y marcada como producción.
+
+Configura en `.env`:
+
+```env
+DB_HOST=10.0.0.20       # IP/host de la BD
+DB_PORT=5432            # puerto real de la BD
+DB_LOCAL_PORT=15432     # puerto en 127.0.0.1 del Mac
+DB_VIA_SSH=0
+DB_TYPE=postgres        # postgres | mysql | mariadb | sqlserver | oracle
+DB_NAME=mi_base
+DB_USER=usuario_bd
+DB_PASS=contraseña_bd
+DB_READ_ONLY=1
+
+CB_ADMIN_NAME=qa
+CB_ADMIN_PASSWORD=Cambiame123   # mín. 8, mayúsculas/minúsculas y 1 número
+```
+
+- `DB_VIA_SSH=0`: la BD es alcanzable directo desde la VPN (`socat`).
+- `DB_VIA_SSH=1`: la BD solo es accesible desde `SSH_HOST`; se abre un túnel
+  SSH con las mismas credenciales de `ssh-target`. Si la BD escucha en el
+  propio servidor SSH usa `DB_HOST=localhost` (no `127.0.0.1`: si la BD escucha solo en IPv6 `::1` fallaría).
+
+El túnel se reconecta solo si se cae. Las conexiones creadas a mano en la UI
+se pierden al reiniciar: gestiona la conexión desde `.env`.
+
+### Usar un cliente de escritorio (opcional)
+
+La BD también queda en `127.0.0.1:DB_LOCAL_PORT` del Mac, así que puedes
+conectarte con DBeaver / TablePlus / DataGrip si lo prefieres.
+
 ## Si la VPN no levanta
 
 El `entrypoint.sh` espera 30s a que aparezca `ppp0`. Si falla:
@@ -79,3 +123,7 @@ El `entrypoint.sh` espera 30s a que aparezca `ppp0`. Si falla:
   capacidades de red y `/dev/ppp`. Es aceptable para uso personal.
 - L2TP sin IPsec viaja sin cifrar a nivel de túnel. Asegúrate de que
   el SSH (que ya cifra) sea suficiente para tu caso de uso.
+- Con `DB_VIA_SSH=0` el tráfico de la BD viaja por ese túnel sin cifrar;
+  usa SSL en la conexión de la BD o `DB_VIA_SSH=1` si es posible.
+- Los puertos se publican solo en `127.0.0.1`, no en tu red local.
+- Para prod, usa un usuario de BD de solo lectura cuando no necesites escribir.

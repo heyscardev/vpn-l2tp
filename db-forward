@@ -1,0 +1,50 @@
+#!/bin/bash
+# Expone la base de datos remota en el puerto DB_LOCAL_PORT del contenedor
+# (publicado en 127.0.0.1 del Mac por docker-compose) a través de la VPN.
+#   DB_VIA_SSH=0 -> socat directo a DB_HOST:DB_PORT (la BD es alcanzable desde la VPN)
+#   DB_VIA_SSH=1 -> túnel SSH por SSH_HOST; DB_HOST se resuelve desde ese servidor
+#                   (usa DB_HOST=localhost si la BD escucha solo en el propio SSH_HOST)
+# Se reconecta solo si el túnel se cae.
+
+: "${DB_HOST:?Falta DB_HOST en .env}"
+: "${DB_PORT:?Falta DB_PORT en .env}"
+DB_LOCAL_PORT="${DB_LOCAL_PORT:-15432}"
+
+log() { echo "==> [db-forward] $*"; }
+
+forward_direct() {
+    socat "TCP-LISTEN:${DB_LOCAL_PORT},fork,reuseaddr" "TCP:${DB_HOST}:${DB_PORT}"
+}
+
+forward_ssh() {
+    : "${SSH_HOST:?Falta SSH_HOST en .env}"
+    : "${SSH_USER:?Falta SSH_USER en .env}"
+    local opts=(
+        -N
+        -o StrictHostKeyChecking=accept-new
+        -o ServerAliveInterval=30
+        -o ServerAliveCountMax=3
+        -o ExitOnForwardFailure=yes
+        -p "${SSH_PORT:-22}"
+        -L "0.0.0.0:${DB_LOCAL_PORT}:${DB_HOST}:${DB_PORT}"
+    )
+    if [ -n "$SSH_PASS" ]; then
+        sshpass -p "$SSH_PASS" ssh "${opts[@]}" "${SSH_USER}@${SSH_HOST}"
+    else
+        ssh "${opts[@]}" "${SSH_USER}@${SSH_HOST}"
+    fi
+}
+
+if [ "${DB_VIA_SSH:-0}" = "1" ]; then
+    log "puerto ${DB_LOCAL_PORT} -> ${DB_HOST}:${DB_PORT} (vía SSH ${SSH_HOST})"
+    forward=forward_ssh
+else
+    log "puerto ${DB_LOCAL_PORT} -> ${DB_HOST}:${DB_PORT} (directo por VPN)"
+    forward=forward_direct
+fi
+
+while true; do
+    $forward
+    log "túnel caído, reintentando en 5s..."
+    sleep 5
+done

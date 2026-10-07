@@ -79,8 +79,16 @@ echo " Servidor:   ${VPN_SERVER}"
 echo "----------------------------------------------------"
 echo " Para hacer SSH a tu destino:    ssh-target"
 echo " O un SSH manual:                ssh usuario@host"
+if [ -n "$DB_HOST" ]; then
+    echo " Base de datos (desde el Mac):   127.0.0.1:${DB_LOCAL_PORT:-15432}"
+fi
 echo "===================================================="
 echo ""
+
+# Reenvío de la BD hacia el Mac (solo si DB_HOST está definido).
+if [ -n "$DB_HOST" ]; then
+    db-forward &
+fi
 
 # Ejecuta lo que pidan en docker run / compose; por defecto: sleep infinity.
 exec "$@"

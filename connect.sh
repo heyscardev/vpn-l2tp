@@ -3,6 +3,7 @@
 # Uso:
 #   ./connect.sh           -> entra a un bash dentro del contenedor
 #   ./connect.sh ssh       -> conecta y abre SSH al destino del .env
+#   ./connect.sh db        -> conecta y abre el gestor de BD en el navegador
 #   ./connect.sh down      -> apaga el contenedor
 set -e
 
@@ -19,6 +20,8 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+CB_ADMIN_NAME=$(grep -E '^CB_ADMIN_NAME=' .env | cut -d= -f2-)
+
 # Construye (si hace falta) y levanta el contenedor en background
 docker compose up -d --build
 
@@ -28,6 +31,7 @@ echo "==> Esperando que el túnel suba..."
 for i in $(seq 1 40); do
     if docker compose logs vpn 2>/dev/null | grep -q "VPN conectada"; then
         echo "==> Túnel listo."
+        echo "==> Gestor de BD: http://localhost:8978  (usuario: ${CB_ADMIN_NAME:-qa})"
         break
     fi
     if docker compose logs vpn 2>/dev/null | grep -q "ERROR:"; then
@@ -39,7 +43,14 @@ for i in $(seq 1 40); do
     sleep 1
 done
 
-if [ "$1" = "ssh" ]; then
+if [ "$1" = "db" ]; then
+    echo "==> Esperando que CloudBeaver arranque..."
+    for i in $(seq 1 60); do
+        curl -sf -o /dev/null http://localhost:8978/ && break
+        sleep 2
+    done
+    open http://localhost:8978
+elif [ "$1" = "ssh" ]; then
     docker compose exec vpn ssh-target
 else
     docker compose exec vpn bash
